@@ -157,7 +157,7 @@ class SimpleRepeatable extends Field
      * @param string|null $attribute
      * @return void
      */
-    public function resolve($resource, $attribute = null)
+public function resolve($resource, $attribute = null): void
     {
         $novaRequest = app()->make(NovaRequest::class);
         $resolveForDisplay = $novaRequest->isResourceIndexRequest() || $novaRequest->isResourceDetailRequest();
@@ -177,7 +177,25 @@ class SimpleRepeatable extends Field
             'fields' => $this->fields->resolve(null) // Empty fields
         ]);
 
-        return parent::resolve($resource, $attribute);
+        $this->resource = $resource;
+
+        $attribute ??= $this->attribute;
+
+        if ($this->isComputed()) {
+            $this->value = call_user_func($this->computedCallback, $resource);
+
+            return;
+        }
+
+        if (! $this->resolveCallback) {
+            $this->value = $this->resolveAttribute($resource, $attribute);
+        } elseif (is_callable($this->resolveCallback)) {
+            tap($this->resolveAttribute($resource, $attribute), function ($value) use ($resource, $attribute) {
+                $this->value = call_user_func($this->resolveCallback, $value, $resource, $attribute);
+            });
+        }
+
+
     }
 
     /**
